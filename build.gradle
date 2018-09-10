@@ -152,6 +152,7 @@ curseforge {
         changelog = getChangelogText()
         releaseType = 'release'
 
+        mainArtifact shadowJar
         addArtifact sourceJar
     }
 }
