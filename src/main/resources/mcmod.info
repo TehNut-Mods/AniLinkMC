@@ -1,0 +1,15 @@
+[
+  {
+    "modid": "anilink",
+    "name": "AniLink",
+    "description": "Share anime, manga, and characters from the in-game chat.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "http://tehnut.info/",
+    "updateUrl": "http://tehnut.info/jenkins/",
+    "authorList": [ "TehNut" ],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [ ]
+  }
+]
