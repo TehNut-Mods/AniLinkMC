@@ -37,7 +37,7 @@ public class CommandQuery extends CommandBase {
 
     @Override
     public String getUsage(ICommandSender sender) {
-        return "/" + name + " [search_string]";
+        return "command.anilink:" + query.name().toLowerCase(Locale.ROOT) + "_usage";
     }
 
     @Override
