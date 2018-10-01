@@ -1,0 +1,14 @@
+chat.anilink:nsfw=Dis sewies ez vry OWO.
+chat.anilink:nsfw_link=Dis sewies ez vry OWO. Plz luk et da linky at ur own risk. uwu
+chat.anilink:unable_to_send=Oh NOeS! We coodent query da mediaz.
+chat.anilink:error=OOPSIE WOOPSIE!! Uwu We made a fucky wucky!! A wittle fucko boingo! The code monkeys at our headquaters are working VEWY HAWD to fix this.
+chat.anilink:description=Descripshun
+chat.anilink:has_linked=%s haz linked da %s %s
+
+command.anilink:anime_usage=/anime <searchString>
+command.anilink:manga_usage=/manga <searchString>
+command.anilink:character_usage=/character <searchString>
+
+chat.anilink:type_anime=Animoo
+chat.anilink:type_manga=Mango
+chat.anilink:type_character=Charactr
