@@ -1,0 +1,29 @@
+{
+  "id": "anilink",
+  "name": "AniLink",
+  "description": "Share anime, manga, and characters from the in-game chat.",
+  "version": "1.0.0",
+  "license": "MIT",
+  "side": "universal",
+  "initializers": [
+    "me.waifu.anilink.AniLink"
+  ],
+  "links": {
+    "homepage": "https://minecraft.curseforge.com/projects/anilink",
+    "issues": "https://github.com/TehNut/AniLinkMC/issues",
+    "sources": "https://github.com/TehNut/AniLinkMC"
+  },
+  "authors": [
+    {
+      "name": "TehNut",
+      "website": "https://tehnut.info",
+      "email": "nick@tehnut.info"
+    }
+  ],
+  "contributors": [
+    "Tamaized"
+  ],
+  "requires": {
+    "fabric": "*"
+  }
+}

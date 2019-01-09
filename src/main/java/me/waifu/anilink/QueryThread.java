@@ -4,16 +4,15 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.minecraft.command.ICommandSender;
-import net.minecraft.util.text.*;
-import net.minecraft.util.text.event.HoverEvent;
-import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.fabricmc.loader.FabricLoader;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.text.*;
+import net.minecraft.text.event.HoverEvent;
 
 import java.util.Locale;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.FutureTask;
-import java.util.function.Consumer;
 
 public class QueryThread extends Thread {
 
@@ -34,14 +33,14 @@ public class QueryThread extends Thread {
                 try {
                     JsonObject jsonObject = new JsonParser().parse(nextQuery.task.get()).getAsJsonObject();
                     if (jsonObject.get("data").isJsonNull())
-                        nextQuery.sender.sendMessage(getErrorComponent(jsonObject.get("errors").getAsJsonArray()));
+                        nextQuery.sender.addChatMessage(getErrorComponent(jsonObject.get("errors").getAsJsonArray()), false);
 
-                    ITextComponent toSend = nextQuery.query.getTextComponent(jsonObject.getAsJsonObject("data"));
+                    TextComponent toSend = nextQuery.query.getTextComponent(jsonObject.getAsJsonObject("data"));
                     if (toSend != null) {
-                        ITextComponent component = new TextComponentTranslation("chat.anilink:has_linked", nextQuery.sender.getDisplayName(), new TextComponentTranslation("chat.anilink:type_" + nextQuery.query.name().toLowerCase(Locale.ROOT)), toSend);
-                        FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().sendMessage(component);
+                        TextComponent component = new TranslatableTextComponent("chat.anilink.has_linked", nextQuery.sender.getDisplayName(), new TranslatableTextComponent("chat.anilink.type_" + nextQuery.query.name().toLowerCase(Locale.ROOT)), toSend);
+                        FabricLoader.INSTANCE.getEnvironmentHandler().getServerInstance().getPlayerManager().sendToAll(component);
                     } else
-                        nextQuery.sender.sendMessage(new TextComponentTranslation("chat.anilink:unable_to_send"));
+                        nextQuery.sender.addChatMessage(new TranslatableTextComponent("chat.anilink.unable_to_send"), false);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -55,14 +54,14 @@ public class QueryThread extends Thread {
         }
     }
 
-    private static ITextComponent getErrorComponent(JsonArray errors) {
-        ITextComponent component = new TextComponentTranslation("chat.anilink:error").setStyle(new Style().setColor(TextFormatting.RED));
-        ITextComponent hover = new TextComponentString("").setStyle(new Style().setColor(TextFormatting.RED));
+    private static TextComponent getErrorComponent(JsonArray errors) {
+        TextComponent component = new TranslatableTextComponent("chat.anilink.error").setStyle(new Style().setColor(TextFormat.RED));
+        TextComponent hover = new StringTextComponent("").setStyle(new Style().setColor(TextFormat.RED));
         for (JsonElement element : errors) {
-            if (!hover.getSiblings().isEmpty())
-                hover.appendSibling(new TextComponentString("\n"));
+            if (!hover.getChildren().isEmpty())
+                hover.append("\n");
             JsonObjectWrapper json = new JsonObjectWrapper(element.getAsJsonObject());
-            hover.appendSibling(new TextComponentString(json.getString("message")));
+            hover.append(json.getString("message"));
         }
 
         component.setStyle(new Style().setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hover)));
@@ -70,11 +69,11 @@ public class QueryThread extends Thread {
     }
 
     public static class Query {
-        private final ICommandSender sender;
+        private final PlayerEntity sender;
         private final FutureTask<String> task;
         private final QueryType query;
 
-        public Query(ICommandSender sender, FutureTask<String> task, QueryType query) {
+        public Query(PlayerEntity sender, FutureTask<String> task, QueryType query) {
             this.sender = sender;
             this.task = task;
             this.query = query;

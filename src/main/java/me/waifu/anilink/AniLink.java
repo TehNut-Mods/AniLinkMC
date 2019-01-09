@@ -1,52 +1,70 @@
 package me.waifu.anilink;
 
-import net.minecraftforge.common.config.Config;
-import net.minecraftforge.common.config.ConfigManager;
-import net.minecraftforge.fml.client.event.ConfigChangedEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
-import net.minecraftforge.fml.common.event.FMLServerStoppedEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.commands.CommandRegistry;
+import net.fabricmc.fabric.events.ServerEvent;
+import net.fabricmc.loader.FabricLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-@Mod(modid = AniLink.MODID, name = AniLink.NAME, version = "${VERSION}", acceptableRemoteVersions = "*")
-public class AniLink {
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.function.Supplier;
+
+public class AniLink implements ModInitializer {
 
     public static final String MODID = "anilink";
     public static final String NAME = "AniLink";
     public static final Logger LOGGER = LogManager.getLogger(NAME);
+    public static final Settings CONFIG = ((Supplier<Settings>) () -> {
+        File file = new File(FabricLoader.INSTANCE.getConfigDirectory(), "anilink.json");
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        if (!file.exists()) {
+            Settings settings = new Settings();
+            try (FileWriter writer = new FileWriter(file)) {
+                writer.write(gson.toJson(settings));
+            } catch (IOException e) {
+                LOGGER.warn("Failed to create default config file.");
+            }
 
-    @Mod.EventHandler
-    public void serverStarting(FMLServerStartingEvent event) {
-        event.registerServerCommand(new CommandQuery(QueryType.ANIME));
-        event.registerServerCommand(new CommandQuery(QueryType.MANGA));
-        event.registerServerCommand(new CommandQuery(QueryType.CHARACTER));
-
-        if (!QueryThread.INSTANCE.isAlive()) {
-            LOGGER.info("Starting AniLink query queue thread");
-            QueryThread.INSTANCE.start();
+            return settings;
         }
+
+        try (FileReader reader = new FileReader(file)) {
+            return gson.fromJson(reader, Settings.class);
+        } catch (IOException e) {
+            LOGGER.warn("Failed to read config file.");
+            return new Settings();
+        }
+    }).get();
+
+    @Override
+    public void onInitialize() {
+        CommandRegistry.INSTANCE.register(false, dispatcher -> {
+            dispatcher.register(new CommandQuery(QueryType.ANIME).create());
+            dispatcher.register(new CommandQuery(QueryType.MANGA).create());
+            dispatcher.register(new CommandQuery(QueryType.CHARACTER).create());
+        });
+
+        ServerEvent.START.register(server -> {
+            if (!QueryThread.INSTANCE.isAlive()) {
+                LOGGER.info("Starting AniLink query queue thread");
+                QueryThread.INSTANCE.start();
+            }
+        });
+
+        ServerEvent.STOP.register(server -> {
+            QueryThread.INSTANCE.interrupt();
+            LOGGER.info("Stopping AniLink query queue thread");
+        });
     }
 
-    @Mod.EventHandler
-    public void serverStopped(FMLServerStoppedEvent event) {
-        QueryThread.INSTANCE.interrupt();
-        LOGGER.info("Stopping AniLink query queue thread");
-    }
-
-    @Config(modid = MODID)
-    @Mod.EventBusSubscriber(modid = MODID)
     public static class Settings {
-        @Config.Comment("Hides NSFW descriptions, but still allows the message to be sent.")
-        public static boolean blockNsfw = true;
-        @Config.Comment("Blocks any NSFW media from being displayed.")
-        public static boolean hardBlockNsfw;
-
-        @SubscribeEvent
-        public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
-            if (event.getModID().equals(MODID))
-                ConfigManager.sync(MODID, Config.Type.INSTANCE);
-        }
+        public boolean blockNsfw = true;
+        public boolean hardBlockNsfw;
     }
 }

@@ -2,9 +2,9 @@ package me.waifu.anilink;
 
 import com.google.gson.JsonObject;
 import me.waifu.graphquery.GraphQLQuery;
-import net.minecraft.util.text.*;
-import net.minecraft.util.text.event.ClickEvent;
-import net.minecraft.util.text.event.HoverEvent;
+import net.minecraft.text.*;
+import net.minecraft.text.event.ClickEvent;
+import net.minecraft.text.event.HoverEvent;
 
 import java.net.MalformedURLException;
 import java.util.function.Consumer;
@@ -37,8 +37,8 @@ public enum QueryType {
         if (!charData.getObject("name").isNull("last"))
             name += " " + charData.getObject("name").getString("last");
 
-        ITextComponent hoverData = new TextComponentString("");
-        hoverData.appendSibling(new TextComponentString(name + "\n").setStyle(new Style().setUnderlined(true)));
+        TextComponent hoverData = new StringTextComponent("");
+        hoverData.append(new StringTextComponent(name + "\n").setStyle(new Style().setUnderline(true)));
 
         String description = charData.getString("description");
         description = description.replace("<br>", "");
@@ -46,10 +46,10 @@ public enum QueryType {
             description = description.substring(0, description.indexOf("~!"));
         if (description.length() > 450)
             description = description.substring(0, 450) + "...";
-        hoverData.appendSibling(new TextComponentString(description));
+        hoverData.append(new StringTextComponent(description));
 
-        return new TextComponentString("[" + name + "]").setStyle(new Style()
-                .setColor(TextFormatting.DARK_AQUA)
+        return new StringTextComponent("[" + name + "]").setStyle(new Style()
+                .setColor(TextFormat.DARK_AQUA)
                 .setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, charData.getString("url")))
                 .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverData))
         );
@@ -57,10 +57,10 @@ public enum QueryType {
     ;
 
     private final Consumer<GraphQLQuery> queryBuilder;
-    private final Function<JsonObjectWrapper, ITextComponent> componentProvider;
+    private final Function<JsonObjectWrapper, TextComponent> componentProvider;
     private GraphQLQuery query;
 
-    QueryType(Consumer<GraphQLQuery> queryBuilder, Function<JsonObjectWrapper, ITextComponent> componentProvider) {
+    QueryType(Consumer<GraphQLQuery> queryBuilder, Function<JsonObjectWrapper, TextComponent> componentProvider) {
         this.queryBuilder = queryBuilder;
         this.componentProvider = componentProvider;
     }
@@ -69,7 +69,7 @@ public enum QueryType {
         return query == null ? query = new GraphQLQuery(GraphQLQuery.RequestType.QUERY, queryBuilder) : query;
     }
 
-    public ITextComponent getTextComponent(JsonObject jsonObject) {
+    public TextComponent getTextComponent(JsonObject jsonObject) {
         return componentProvider.apply(new JsonObjectWrapper(jsonObject));
     }
 
@@ -99,19 +99,19 @@ public enum QueryType {
         }));
     }
 
-    private static ITextComponent createMediaComponent(JsonObjectWrapper json) {
+    private static TextComponent createMediaComponent(JsonObjectWrapper json) {
         if (json.isNull("Media"))
             return null;
 
         JsonObjectWrapper mediaData = json.getObject("Media");
-        if (AniLink.Settings.hardBlockNsfw && mediaData.getBoolean("isAdult"))
+        if (AniLink.CONFIG.hardBlockNsfw && mediaData.getBoolean("isAdult"))
             return null;
 
-        ITextComponent hoverData = new TextComponentString("");
-        hoverData.appendSibling(new TextComponentString(mediaData.getObject("title").getString("romaji") + "\n").setStyle(new Style().setUnderlined(true)));
+        TextComponent hoverData = new StringTextComponent("");
+        hoverData.append(new StringTextComponent(mediaData.getObject("title").getString("romaji") + "\n").setStyle(new Style().setUnderline(true)));
 
-        if (AniLink.Settings.blockNsfw && mediaData.getBoolean("isAdult"))
-            hoverData.appendSibling(new TextComponentTranslation("chat.anilink:nsfw_link").setStyle(new Style().setColor(TextFormatting.RED)));
+        if (AniLink.CONFIG.blockNsfw && mediaData.getBoolean("isAdult"))
+            hoverData.append(new TranslatableTextComponent("chat.anilink.nsfw_link").setStyle(new Style().setColor(TextFormat.RED)));
         else {
             String description = mediaData.getString("description");
             description = description.replace("<br>", "");
@@ -119,11 +119,11 @@ public enum QueryType {
                 description = description.substring(0, description.indexOf("~!"));
             if (description.length() > 450)
                 description = description.substring(0, 450) + "...";
-            hoverData.appendSibling(new TextComponentString(description));
+            hoverData.append(new StringTextComponent(description));
         }
 
-        return new TextComponentString("[" + mediaData.getObject("title").getString("romaji") + "]").setStyle(new Style()
-                .setColor(TextFormatting.DARK_AQUA)
+        return new StringTextComponent("[" + mediaData.getObject("title").getString("romaji") + "]").setStyle(new Style()
+                .setColor(TextFormat.DARK_AQUA)
                 .setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, mediaData.getString("url")))
                 .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverData))
         );
