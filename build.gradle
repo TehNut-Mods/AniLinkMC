@@ -1,4 +1,5 @@
 plugins {
+    id "com.github.johnrengelman.shadow" version "2.0.4"
     id "com.matthewprenger.cursegradle" version "1.1.2"
 	id 'fabric-loom' version '0.2.0-SNAPSHOT'
     id "maven-publish"
@@ -26,7 +27,17 @@ dependencies {
     mappings "net.fabricmc:yarn:${snapshot_version}.${mappings_version}"
     modCompile "net.fabricmc:fabric-loader:${loader_version}"
     modCompile "net.fabricmc:fabric:${api_version}"
-    compile "me.waifu.graphquery:GraphQuery:1.0.0"
+    shadow "me.waifu.graphquery:GraphQuery:1.0.0"
+}
+
+jar {
+    classifier = 'slim'
+}
+
+shadowJar {
+    relocate 'me.waifu.graphquery', 'me.waifu.anilink.graphquery'
+    classifier = ''
+    configurations = [ project.configurations.shadow ]
 }
 
 task sourcesJar(type: Jar) {
@@ -38,7 +49,7 @@ publishing {
     tasks.publish.dependsOn 'build'
     publications {
         mavenJava(MavenPublication) {
-            artifact jar
+            artifact shadowJar
             artifact sourcesJar
         }
     }
@@ -64,4 +75,13 @@ curseforge {
 
         addArtifact sourcesJar
     }
+}
+
+tasks.remapJar.dependsOn shadowJar
+tasks.remapJar.mustRunAfter shadowJar
+tasks.publish.shouldRunAfter shadowJar
+tasks.publish.mustRunAfter remapJar
+
+tasks.jar << {
+    tasks.remapJar.jar = tasks.shadowJar.outputs.getFiles()[0]
 }

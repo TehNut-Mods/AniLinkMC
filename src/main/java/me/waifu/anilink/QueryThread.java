@@ -4,11 +4,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import me.waifu.graphquery.GraphQLQuery;
 import net.fabricmc.loader.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.*;
 import net.minecraft.text.event.HoverEvent;
 
+import java.io.IOException;
 import java.util.Locale;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -28,20 +30,27 @@ public class QueryThread extends Thread {
         while (!isInterrupted()) {
             Query nextQuery = queue.poll();
             if (nextQuery != null ) {
-                nextQuery.task.run();
-
                 try {
-                    JsonObject jsonObject = new JsonParser().parse(nextQuery.task.get()).getAsJsonObject();
-                    if (jsonObject.get("data").isJsonNull())
-                        nextQuery.sender.addChatMessage(getErrorComponent(jsonObject.get("errors").getAsJsonArray()), false);
+                    FutureTask<String> task = nextQuery.graphQLQuery.createRequest();
+                    task.run();
 
-                    TextComponent toSend = nextQuery.query.getTextComponent(jsonObject.getAsJsonObject("data"));
-                    if (toSend != null) {
-                        TextComponent component = new TranslatableTextComponent("chat.anilink.has_linked", nextQuery.sender.getDisplayName(), new TranslatableTextComponent("chat.anilink.type_" + nextQuery.query.name().toLowerCase(Locale.ROOT)), toSend);
-                        FabricLoader.INSTANCE.getEnvironmentHandler().getServerInstance().getPlayerManager().sendToAll(component);
-                    } else
-                        nextQuery.sender.addChatMessage(new TranslatableTextComponent("chat.anilink.unable_to_send"), false);
-                } catch (Exception e) {
+                    FabricLoader.INSTANCE.getEnvironmentHandler().getServerInstance().execute(() -> {
+                        try {
+                            JsonObject jsonObject = new JsonParser().parse(task.get()).getAsJsonObject();
+                            if (jsonObject.get("data").isJsonNull())
+                                nextQuery.sender.addChatMessage(getErrorComponent(jsonObject.get("errors").getAsJsonArray()), false);
+
+                            TextComponent toSend = nextQuery.query.getTextComponent(jsonObject.getAsJsonObject("data"));
+                            if (toSend != null) {
+                                TextComponent component = new TranslatableTextComponent("chat.anilink.has_linked", nextQuery.sender.getDisplayName(), new TranslatableTextComponent("chat.anilink.type_" + nextQuery.query.name().toLowerCase(Locale.ROOT)), toSend);
+                                FabricLoader.INSTANCE.getEnvironmentHandler().getServerInstance().getPlayerManager().sendToAll(component);
+                            } else
+                                nextQuery.sender.addChatMessage(new TranslatableTextComponent("chat.anilink.unable_to_send"), false);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    });
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
@@ -70,12 +79,12 @@ public class QueryThread extends Thread {
 
     public static class Query {
         private final PlayerEntity sender;
-        private final FutureTask<String> task;
+        private final GraphQLQuery graphQLQuery;
         private final QueryType query;
 
-        public Query(PlayerEntity sender, FutureTask<String> task, QueryType query) {
+        public Query(PlayerEntity sender, GraphQLQuery graphQLQuery, QueryType query) {
             this.sender = sender;
-            this.task = task;
+            this.graphQLQuery = graphQLQuery;
             this.query = query;
         }
     }
