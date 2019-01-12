@@ -58,7 +58,7 @@ public class QueryThread extends Thread {
             try {
                 sleep(500);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+
             }
         }
     }
