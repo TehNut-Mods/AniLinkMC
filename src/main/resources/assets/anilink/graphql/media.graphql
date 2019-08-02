@@ -1,0 +1,10 @@
+query($name: String, $type: MediaType) {
+    Media(type: $type, search: $name) {
+        title {
+            romaji
+        }
+        description
+        isAdult
+        url: siteUrl
+    }
+}

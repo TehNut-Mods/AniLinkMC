@@ -4,7 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 public class JsonObjectWrapper {
-    
+
     private final JsonObject wrapped;
 
     public JsonObjectWrapper(JsonObject wrapped) {
@@ -18,7 +18,7 @@ public class JsonObjectWrapper {
     public boolean isNull(String name) {
         return wrapped.get(name).isJsonNull();
     }
-    
+
     public long getLong(String name) {
         return has(name) ? wrapped.getAsJsonPrimitive(name).getAsLong() : 0L;
     }
@@ -58,7 +58,7 @@ public class JsonObjectWrapper {
     public JsonObjectWrapper getObject(String name) {
         return new JsonObjectWrapper(has(name) ? wrapped.getAsJsonObject(name) : new JsonObject());
     }
-    
+
     public JsonArray getArray(String name) {
         return has(name) ? wrapped.getAsJsonArray(name) : new JsonArray();
     }

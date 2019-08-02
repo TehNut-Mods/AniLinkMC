@@ -1,0 +1,9 @@
+query($name: String) {
+    Character(search: $name) {
+        name {
+            full
+        }
+        description
+        url: siteUrl
+    }
+}

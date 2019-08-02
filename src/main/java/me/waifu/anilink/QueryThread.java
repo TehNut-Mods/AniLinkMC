@@ -1,16 +1,14 @@
 package me.waifu.anilink;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import me.waifu.graphquery.GraphQLQuery;
-import net.fabricmc.loader.FabricLoader;
+import com.google.gson.*;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.text.*;
-import net.minecraft.text.event.HoverEvent;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
+import net.minecraft.text.TranslatableText;
+import net.minecraft.util.Formatting;
 
-import java.io.IOException;
 import java.util.Locale;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -20,6 +18,7 @@ public class QueryThread extends Thread {
 
     public static final QueryThread INSTANCE = new QueryThread();
     public final Queue<Query> queue = new ConcurrentLinkedQueue<>();
+    public MinecraftServer server;
 
     private QueryThread() {
         super("AniList Query");
@@ -29,30 +28,34 @@ public class QueryThread extends Thread {
     public void run() {
         while (!isInterrupted()) {
             Query nextQuery = queue.poll();
-            if (nextQuery != null ) {
-                try {
-                    FutureTask<String> task = nextQuery.graphQLQuery.createRequest();
-                    task.run();
+            if (nextQuery != null) {
+                FutureTask<String> task = nextQuery.graphQLQuery.submit();
+                task.run();
 
-                    FabricLoader.INSTANCE.getEnvironmentHandler().getServerInstance().execute(() -> {
+                server.execute(() -> {
+                    try {
+                        String response = task.get();
                         try {
-                            JsonObject jsonObject = new JsonParser().parse(task.get()).getAsJsonObject();
-                            if (jsonObject.get("data").isJsonNull())
-                                nextQuery.sender.addChatMessage(getErrorComponent(jsonObject.get("errors").getAsJsonArray()), false);
+                            JsonObject jsonObject = new JsonParser().parse(response).getAsJsonObject();
+                            if (jsonObject.get("data").isJsonNull()) {
+                                nextQuery.sender.addChatMessage(getErrorText(jsonObject.get("errors").getAsJsonArray()), false);
+                                return;
+                            }
 
-                            TextComponent toSend = nextQuery.query.getTextComponent(jsonObject.getAsJsonObject("data"));
+                            Text toSend = nextQuery.query.getText(jsonObject.getAsJsonObject("data"));
                             if (toSend != null) {
-                                TextComponent component = new TranslatableTextComponent("chat.anilink.has_linked", nextQuery.sender.getDisplayName(), new TranslatableTextComponent("chat.anilink.type_" + nextQuery.query.name().toLowerCase(Locale.ROOT)), toSend);
-                                FabricLoader.INSTANCE.getEnvironmentHandler().getServerInstance().getPlayerManager().sendToAll(component);
+                                Text Text = new TranslatableText("chat.anilink.has_linked", nextQuery.sender.getDisplayName(), new TranslatableText("chat.anilink.type_" + nextQuery.query.name().toLowerCase(Locale.ROOT)), toSend);
+                                server.getPlayerManager().sendToAll(Text);
                             } else
-                                nextQuery.sender.addChatMessage(new TranslatableTextComponent("chat.anilink.unable_to_send"), false);
-                        } catch (Exception e) {
+                                nextQuery.sender.addChatMessage(new TranslatableText("chat.anilink.unable_to_send"), false);
+                        } catch (JsonSyntaxException e) {
+                            AniLink.LOGGER.error(response);
                             e.printStackTrace();
                         }
-                    });
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
             }
 
             try {
@@ -63,18 +66,18 @@ public class QueryThread extends Thread {
         }
     }
 
-    private static TextComponent getErrorComponent(JsonArray errors) {
-        TextComponent component = new TranslatableTextComponent("chat.anilink.error").setStyle(new Style().setColor(TextFormat.RED));
-        TextComponent hover = new StringTextComponent("").setStyle(new Style().setColor(TextFormat.RED));
+    private static Text getErrorText(JsonArray errors) {
+        Text Text = new TranslatableText("chat.anilink.error").setStyle(new Style().setColor(Formatting.RED));
+        Text hover = Text.copy().setStyle(new Style().setColor(Formatting.RED));
         for (JsonElement element : errors) {
-            if (!hover.getChildren().isEmpty())
+            if (!hover.getSiblings().isEmpty())
                 hover.append("\n");
             JsonObjectWrapper json = new JsonObjectWrapper(element.getAsJsonObject());
             hover.append(json.getString("message"));
         }
 
-        component.setStyle(new Style().setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hover)));
-        return component;
+        Text.setStyle(new Style().setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hover)));
+        return Text;
     }
 
     public static class Query {

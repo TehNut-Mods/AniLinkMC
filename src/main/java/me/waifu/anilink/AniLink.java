@@ -3,9 +3,10 @@ package me.waifu.anilink;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.commands.CommandRegistry;
-import net.fabricmc.fabric.events.ServerEvent;
-import net.fabricmc.loader.FabricLoader;
+import net.fabricmc.fabric.api.event.server.ServerStartCallback;
+import net.fabricmc.fabric.api.event.server.ServerStopCallback;
+import net.fabricmc.fabric.api.registry.CommandRegistry;
+import net.fabricmc.loader.api.FabricLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,7 +22,7 @@ public class AniLink implements ModInitializer {
     public static final String NAME = "AniLink";
     public static final Logger LOGGER = LogManager.getLogger(NAME);
     public static final Settings CONFIG = ((Supplier<Settings>) () -> {
-        File file = new File(FabricLoader.INSTANCE.getConfigDirectory(), "anilink.json");
+        File file = new File(FabricLoader.getInstance().getConfigDirectory(), "anilink.json");
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         if (!file.exists()) {
             Settings settings = new Settings();
@@ -50,15 +51,17 @@ public class AniLink implements ModInitializer {
             dispatcher.register(new CommandQuery(QueryType.CHARACTER).create());
         });
 
-        ServerEvent.START.register(server -> {
+        ServerStartCallback.EVENT.register(server -> {
             if (!QueryThread.INSTANCE.isAlive()) {
                 LOGGER.info("Starting AniLink query queue thread");
                 QueryThread.INSTANCE.start();
+                QueryThread.INSTANCE.server = server;
             }
         });
 
-        ServerEvent.STOP.register(server -> {
+        ServerStopCallback.EVENT.register(server -> {
             QueryThread.INSTANCE.interrupt();
+            QueryThread.INSTANCE.server = null;
             LOGGER.info("Stopping AniLink query queue thread");
         });
     }

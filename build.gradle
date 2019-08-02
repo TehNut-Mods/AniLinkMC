@@ -1,17 +1,16 @@
 plugins {
-    id "com.github.johnrengelman.shadow" version "2.0.4"
     id "com.matthewprenger.cursegradle" version "1.1.2"
-	id 'fabric-loom' version '0.2.0-SNAPSHOT'
+    id 'fabric-loom' version '0.2.3-SNAPSHOT'
     id "maven-publish"
 }
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
 
 def build_number = System.getenv('BUILD_NUMBER') != null ? System.getenv('BUILD_NUMBER') : 'CUSTOM'
 
 group = package_group
-archivesBaseName = mod_name
+archivesBaseName = "${mod_name}-fabric"
 version = "${mc_version}-${mod_version}-${build_number}"
 
 minecraft {
@@ -19,37 +18,26 @@ minecraft {
 }
 
 repositories {
-    maven { url "https://waifu.me/maven/" }
+
 }
 
 dependencies {
-    minecraft "com.mojang:minecraft:${snapshot_version}"
-    mappings "net.fabricmc:yarn:${snapshot_version}.${mappings_version}"
+    minecraft "com.mojang:minecraft:${mc_version}"
+    mappings "net.fabricmc:yarn:${mc_version}+build.${mappings_version}"
     modCompile "net.fabricmc:fabric-loader:${loader_version}"
-    modCompile "net.fabricmc:fabric:${api_version}"
-    shadow "me.waifu.graphquery:GraphQuery:1.0.0"
-}
-
-jar {
-    classifier = 'slim'
-}
-
-shadowJar {
-    relocate 'me.waifu.graphquery', 'me.waifu.anilink.graphquery'
-    classifier = ''
-    configurations = [ project.configurations.shadow ]
+    modCompile "net.fabricmc.fabric-api:fabric-api:${api_version}"
 }
 
 task sourcesJar(type: Jar) {
-    classifier = 'sources'
     from sourceSets.main.allJava
+    classifier = 'sources'
 }
 
 publishing {
     tasks.publish.dependsOn 'build'
     publications {
         mavenJava(MavenPublication) {
-            artifact shadowJar
+            artifact remapJar.output
             artifact sourcesJar
         }
     }
@@ -68,20 +56,48 @@ curseforge {
 
     project {
         id = "${curse_id}"
+        changelog = getChangelogText()
         releaseType = 'release'
 
-        gameVersionStrings.clear()
-        gameVersionStrings.add("1.14-Snapshot")
-
+        addGameVersion "1.14.2"
+        addGameVersion "1.14.3"
+        addGameVersion "1.14.4"
+        addGameVersion "Fabric"
+        addGameVersion "Java 8"
         addArtifact sourcesJar
+        mainArtifact(file("${project.buildDir}/libs/${archivesBaseName}-${version}.jar"))
+
+        afterEvaluate {
+            uploadTask.dependsOn(remapJar)
+        }
+    }
+
+    options {
+        forgeGradleIntegration = false
     }
 }
 
-tasks.remapJar.dependsOn shadowJar
-tasks.remapJar.mustRunAfter shadowJar
-tasks.publish.shouldRunAfter shadowJar
-tasks.publish.mustRunAfter remapJar
-
-tasks.jar << {
-    tasks.remapJar.jar = tasks.shadowJar.outputs.getFiles()[0]
+String getChangelogText() {
+    def changelogFile = new File('changelog.txt')
+    String str = ''
+    String separator = '---'
+    int lineCount = 0
+    boolean done = false
+    changelogFile.eachLine {
+        if (done || it == null) {
+            return
+        }
+        if (lineCount < 3) {
+            lineCount++
+            if (it.startsWith(separator)) {
+                return
+            }
+        }
+        if (!it.startsWith(separator)) {
+            str += "$it" + (lineCount < 3 ? ':\n\n' : '\n')
+            return
+        }
+        done = true // once we go past the first version block, parse no more
+    }
+    return str
 }
