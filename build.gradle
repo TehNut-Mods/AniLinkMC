@@ -62,7 +62,6 @@ curseforge {
         addGameVersion "1.14.2"
         addGameVersion "1.14.3"
         addGameVersion "1.14.4"
-        addGameVersion "Fabric"
         addGameVersion "Java 8"
         addArtifact sourcesJar
         mainArtifact(file("${project.buildDir}/libs/${archivesBaseName}-${version}.jar"))
